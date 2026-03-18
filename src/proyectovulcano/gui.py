@@ -453,11 +453,6 @@ class VulcanoMainWindow:
         except Exception as exc:
             self._log(f"Error generando variograma: {exc}")
 
-        vars_frame = ttk.LabelFrame(top, text="Gestion de variables", padding=10)
-        vars_frame.pack(fill="x", pady=5)
-        ttk.Label(vars_frame, text="Variable visual:").grid(row=0, column=0, sticky="w")
-        self.color_by_combo = ttk.Combobox(vars_frame, textvariable=self.color_by_var, width=18)
-        self.color_by_combo.grid(row=0, column=1, padx=5)
         ttk.Label(vars_frame, text="Variable de modelo:").grid(row=0, column=2, sticky="w")
         self.value_col_combo = ttk.Combobox(vars_frame, textvariable=self.value_col_var, width=18)
         self.value_col_combo.grid(row=0, column=3, padx=5)
