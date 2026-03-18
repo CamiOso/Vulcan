@@ -248,6 +248,10 @@ class VulcanoMainWindow:
         self.win.title("ENVISAJE - Proyecto Vulcano")
         self.win.geometry(str(config.get("ui_resolution", "1280x800")))
 
+        # Log panel for user feedback and error messages
+        self.log = ScrolledText(self.win, height=8, state="normal")
+        self.log.pack(fill="x", padx=8, pady=4)
+
         data_folder = str(config.get("data_folder", "")).strip()
         self.file_var = tk.StringVar(value=str(Path(data_folder) / initial_file) if data_folder else initial_file)
 
@@ -312,6 +316,9 @@ class VulcanoMainWindow:
         p = Path(self.file_var.get().strip())
         if p.is_absolute():
             return p
+        # Fix: ensure correct path for example CSV
+        if str(p) == "data/data/example_drillholes.csv":
+            return Path("data/example_drillholes.csv").absolute()
         return self._data_folder() / p
 
     def _save_enabled_modules(self) -> None:
@@ -386,6 +393,65 @@ class VulcanoMainWindow:
         self.module_detail.pack(fill="both", expand=True)
         self.module_detail.insert("end", "Selecciona un modulo para ver su detalle.")
         self.module_detail.configure(state="disabled")
+
+        # Panel Geology & Estimation
+        geology_frame = ttk.LabelFrame(top, text="Geology & Estimation", padding=10)
+        geology_frame.pack(fill="x", pady=5)
+        ttk.Button(geology_frame, text="Validar datos de barrenos", command=self._validate_drillholes).pack(side="left", padx=4)
+        ttk.Button(geology_frame, text="Compositar por longitud", command=self._composite_drillholes).pack(side="left", padx=4)
+        ttk.Button(geology_frame, text="Modelado estratigráfico", command=self._stratigraphic_model).pack(side="left", padx=4)
+        ttk.Button(geology_frame, text="Estimación IDW", command=self._estimate_idw).pack(side="left", padx=4)
+        ttk.Button(geology_frame, text="Variograma", command=self._show_variogram).pack(side="left", padx=4)
+    def _validate_drillholes(self):
+        from .geology_estimation import DrillholeDataManager
+        try:
+            df = load_drillholes_csv(self._resolve_file())
+            manager = DrillholeDataManager(df)
+            result = manager.validate_columns()
+            msg = f"Validación: {'OK' if result['valid'] else 'Faltan columnas: ' + ', '.join(result['missing'])}"
+            self._log(msg)
+        except Exception as exc:
+            self._log(f"Error validando barrenos: {exc}")
+
+    def _composite_drillholes(self):
+        from .geology_estimation import CompositingTools
+        try:
+            df = load_drillholes_csv(self._resolve_file())
+            composites = CompositingTools.composite_by_length(df, length=self._get_float(self.composite_length_var, "longitud-composito"), value_col=self.value_col_var.get())
+            self._log(f"Compositado: {len(composites)} intervalos")
+        except Exception as exc:
+            self._log(f"Error compositando: {exc}")
+
+    def _stratigraphic_model(self):
+        from .geology_estimation import StratigraphicModeler
+        try:
+            df = load_drillholes_csv(self._resolve_file())
+            domain_col = self.domain_col_var.get().strip() or "lith"
+            model = StratigraphicModeler.explicit_model(df, domain_col=domain_col)
+            self._log(f"Modelado estratigráfico: {len(model)} dominios")
+        except Exception as exc:
+            self._log(f"Error modelando estratigrafía: {exc}")
+
+    def _estimate_idw(self):
+        from .geology_estimation import EstimationMethods
+        try:
+            df = load_drillholes_csv(self._resolve_file())
+            x = self._get_float(self.block_dx_var, "dx")
+            y = self._get_float(self.block_dy_var, "dy")
+            z = self._get_float(self.block_dz_var, "dz")
+            val = EstimationMethods.idw(df, x, y, z, self.value_col_var.get())
+            self._log(f"Estimación IDW en ({x},{y},{z}): {val:.3f}")
+        except Exception as exc:
+            self._log(f"Error en IDW: {exc}")
+
+    def _show_variogram(self):
+        from .geology_estimation import VariogramAnalyzer
+        try:
+            df = load_drillholes_csv(self._resolve_file())
+            vario = VariogramAnalyzer.experimental_variogram(df, self.value_col_var.get(), lag=10, n_lags=5)
+            self._log(f"Variograma generado: {len(vario)} lags")
+        except Exception as exc:
+            self._log(f"Error generando variograma: {exc}")
 
         vars_frame = ttk.LabelFrame(top, text="Gestion de variables", padding=10)
         vars_frame.pack(fill="x", pady=5)
