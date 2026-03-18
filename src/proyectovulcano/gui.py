@@ -191,9 +191,8 @@ class StartupWindow:
 
         env_frame = ttk.LabelFrame(wrap, text="Entorno de diseño", padding=10)
         env_frame.pack(fill="x", pady=6)
-        env_btn = ttk.Button(env_frame, text="Abrir entorno", width=24)
+        env_btn = ttk.Button(env_frame, text="Abrir entorno", width=24, command=self._open_env)
         env_btn.pack(side="left")
-        env_btn.bind("<Double-Button-1>", self._open_env)
         ttk.Button(env_frame, text="Guardar", command=self._save).pack(side="left", padx=8)
 
         self.msg = ScrolledText(wrap, height=12)
@@ -253,7 +252,8 @@ class VulcanoMainWindow:
         self.log.pack(fill="x", padx=8, pady=4)
 
         data_folder = str(config.get("data_folder", "")).strip()
-        self.file_var = tk.StringVar(value=str(Path(data_folder) / initial_file) if data_folder else initial_file)
+        # Always use 'data/example_drillholes.csv' as default
+        self.file_var = tk.StringVar(value="data/example_drillholes.csv")
 
         self.mode_var = tk.StringVar(value="Sondajes 3D")
         self.color_by_var = tk.StringVar(value="au")
@@ -316,8 +316,8 @@ class VulcanoMainWindow:
         p = Path(self.file_var.get().strip())
         if p.is_absolute():
             return p
-        # Fix: ensure correct path for example CSV
-        if str(p) == "data/data/example_drillholes.csv":
+        # Always resolve to 'data/example_drillholes.csv' for default
+        if str(p) == "data/example_drillholes.csv":
             return Path("data/example_drillholes.csv").absolute()
         return self._data_folder() / p
 
