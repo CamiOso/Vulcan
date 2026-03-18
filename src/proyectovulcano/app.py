@@ -26,6 +26,19 @@ def build_parser() -> argparse.ArgumentParser:
         default=8.0,
         help="Tamano de punto en pantalla",
     )
+    parser.add_argument(
+        "--no-traces",
+        action="store_false",
+        dest="show_traces",
+        help="Oculta las trazas de barrenos por hole_id",
+    )
+    parser.add_argument(
+        "--trace-width",
+        type=float,
+        default=3.0,
+        help="Ancho de linea para las trazas de barreno",
+    )
+    parser.set_defaults(show_traces=True)
     return parser
 
 
@@ -34,7 +47,13 @@ def main() -> None:
     args = parser.parse_args()
 
     df = load_drillholes_csv(args.file)
-    show_drillholes(df, color_by=args.color_by, point_size=args.point_size)
+    show_drillholes(
+        df,
+        color_by=args.color_by,
+        point_size=args.point_size,
+        show_traces=args.show_traces,
+        trace_width=args.trace_width,
+    )
 
 
 if __name__ == "__main__":
