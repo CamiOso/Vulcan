@@ -20,12 +20,74 @@ def _iter_hole_traces(df: pd.DataFrame):
         yield pv.lines_from_points(points, close=False)
 
 
+def _expanded_bounds(df: pd.DataFrame) -> tuple[float, float, float, float, float, float]:
+    x_min, x_max = float(df["x"].min()), float(df["x"].max())
+    y_min, y_max = float(df["y"].min()), float(df["y"].max())
+    z_min, z_max = float(df["z"].min()), float(df["z"].max())
+
+    # Ensure non-degenerate box when data has tiny spread on one axis.
+    eps = 1.0
+    if x_min == x_max:
+        x_min -= eps
+        x_max += eps
+    if y_min == y_max:
+        y_min -= eps
+        y_max += eps
+    if z_min == z_max:
+        z_min -= eps
+        z_max += eps
+
+    return (x_min, x_max, y_min, y_max, z_min, z_max)
+
+
+def _add_section_window_overlay(
+    plotter: pv.Plotter,
+    df: pd.DataFrame,
+    section_meta: dict[str, float | str],
+) -> None:
+    center = float(section_meta["center"])
+    width = float(section_meta["width"])
+    section_type = str(section_meta["section_type"])
+    half = width / 2.0
+
+    x_min, x_max, y_min, y_max, z_min, z_max = _expanded_bounds(df)
+    if section_type == "longitudinal":
+        bounds = (
+            center - half,
+            center + half,
+            y_min,
+            y_max,
+            z_min,
+            z_max,
+        )
+    else:
+        bounds = (
+            x_min,
+            x_max,
+            center - half,
+            center + half,
+            z_min,
+            z_max,
+        )
+
+    slab = pv.Box(bounds=bounds)
+    plotter.add_mesh(
+        slab,
+        color="#f4a261",
+        opacity=0.17,
+        show_edges=True,
+        edge_color="#e76f51",
+        line_width=1.0,
+    )
+
+
 def show_drillholes(
     df: pd.DataFrame,
     color_by: str | None = None,
     point_size: float = 8.0,
     show_traces: bool = True,
     trace_width: float = 3.0,
+    section_meta: dict[str, float | str] | None = None,
 ) -> None:
     """Render drillhole points in 3D using PyVista."""
     points = df[["x", "y", "z"]].to_numpy(dtype=float)
@@ -66,6 +128,9 @@ def show_drillholes(
         for line in _iter_hole_traces(df):
             plotter.add_mesh(line, color="#1f2a44", line_width=trace_width)
 
+    if section_meta is not None:
+        _add_section_window_overlay(plotter, df, section_meta)
+
     plotter.add_axes()
     plotter.add_title("Proyecto Vulcano - Sondajes 3D", font_size=16)
     plotter.show_grid(
@@ -88,6 +153,7 @@ def show_block_model(
     block_df: pd.DataFrame,
     value_col: str,
     point_size: float = 12.0,
+    section_meta: dict[str, float | str] | None = None,
 ) -> None:
     """Render block centers with estimated values."""
     valid = block_df.dropna(subset=[value_col]).copy()
@@ -119,6 +185,9 @@ def show_block_model(
             "fmt": "%.2f",
         },
     )
+
+    if section_meta is not None:
+        _add_section_window_overlay(plotter, valid, section_meta)
 
     plotter.add_axes()
     plotter.add_title("Proyecto Vulcano - Block Model IDW", font_size=16)

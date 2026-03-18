@@ -195,6 +195,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Ruta CSV para exportar puntos de la seccion",
     )
+    parser.add_argument(
+        "--show-section-window",
+        action="store_true",
+        help="Muestra en 3D la ventana/plano de seccion",
+    )
     parser.set_defaults(show_traces=True)
     return parser
 
@@ -213,6 +218,14 @@ def main() -> None:
         raise ValueError("No hay datos luego de aplicar el filtro de dominio")
 
     if args.view == "drillholes":
+        section_meta = None
+        if args.show_section_window:
+            _, section_meta = extract_section(
+                df,
+                section_type=args.section_type,
+                center=args.section_center,
+                width=args.section_width,
+            )
         if not args.no_show:
             show_drillholes(
                 df,
@@ -220,16 +233,26 @@ def main() -> None:
                 point_size=args.point_size,
                 show_traces=args.show_traces,
                 trace_width=args.trace_width,
+                section_meta=section_meta,
             )
         return
 
     if args.view == "blocks":
         _, block_df = _build_blocks_pipeline(df, args)
+        section_meta = None
+        if args.show_section_window:
+            _, section_meta = extract_section(
+                block_df,
+                section_type=args.section_type,
+                center=args.section_center,
+                width=args.section_width,
+            )
         if not args.no_show:
             show_block_model(
                 block_df,
                 value_col=args.value_col,
                 point_size=max(args.block_size[0], args.block_size[1]) * 0.6,
+                section_meta=section_meta,
             )
         return
 

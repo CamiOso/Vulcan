@@ -71,6 +71,18 @@ Visualizar seccion transversal desde block model:
 python -m proyectovulcano --file data/example_drillholes.csv --view section --section-source blocks --section-type transversal --section-width 20 --value-col au
 ```
 
+Ver en 3D la ventana de corte antes de abrir seccion 2D:
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view drillholes --color-by au --show-section-window --section-type longitudinal --section-width 25
+```
+
+Tambien aplica para bloques:
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view blocks --value-col au --show-section-window --section-type transversal --section-width 20
+```
+
 Filtrar por dominio geologico (ejemplo):
 
 ```bash
