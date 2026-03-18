@@ -84,9 +84,9 @@ def build_regular_block_model(
     sample_values = valid[value_col].to_numpy(dtype=float)
 
     records: list[dict] = []
-    for x in x_centers:
-        for y in y_centers:
-            for z in z_centers:
+    for i, x in enumerate(x_centers):
+        for j, y in enumerate(y_centers):
+            for k, z in enumerate(z_centers):
                 estimate, n_used = _idw_estimate(
                     sample_xyz=sample_xyz,
                     sample_values=sample_values,
@@ -97,6 +97,10 @@ def build_regular_block_model(
                 )
                 records.append(
                     {
+                        "i": int(i),
+                        "j": int(j),
+                        "k": int(k),
+                        "block_id": f"B_{i}_{j}_{k}",
                         "x": float(x),
                         "y": float(y),
                         "z": float(z),

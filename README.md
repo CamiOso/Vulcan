@@ -35,6 +35,52 @@ pip install -e .
 python -m proyectovulcano --file data/example_drillholes.csv --color-by au
 ```
 
+## Interfaz principal (menus)
+
+Puedes abrir una interfaz de escritorio para seleccionar opciones sin escribir comandos:
+
+```bash
+python -m proyectovulcano --view gui
+```
+
+Tambien puedes abrirla con un CSV inicial:
+
+```bash
+python -m proyectovulcano --view gui --file data/example_drillholes.csv
+```
+
+En la UI tienes:
+
+- Menu Archivo: abrir CSV, usar ejemplo, salir.
+- Menu Ejecutar: correr la vista seleccionada.
+- Menu Ayuda: informacion de la app.
+- Paneles de opciones para drillholes, blocks, section, filtros y parametros IDW.
+- Gestion de variables con deteccion de columnas numericas/categoricas.
+- Slider para mover section-center de forma interactiva.
+- Botones de exportacion directa (composites, bloques, seccion, reporte).
+
+## Funcionalidades Principales
+
+- Creacion de modelos de bloques: construccion de block model regular con IDW.
+- Verificacion y edicion: reporte estadistico composites vs bloques y ajuste por factor de ley (`value-factor`).
+- Estimacion de leyes: IDW configurable (`idw-power`, `search-radius`, `max-samples`).
+- Visualizacion y manipulacion: vistas 3D de sondajes y bloques, secciones 2D, y ventana de corte en 3D.
+- Automatizacion con scripts: ejecucion de flujos via JSON (`--script` o menu Scripts en GUI).
+- Gestion de variables: deteccion y seleccion de variables numericas/categoricas en la UI.
+- Indexado y exportacion: bloques con indices `i`, `j`, `k`, `block_id`; exportaciones a CSV/JSON/TXT.
+
+## Automatizacion por script
+
+Ejecutar workflow desde JSON:
+
+```bash
+python -m proyectovulcano --script scripts/example_workflow.json
+```
+
+Ejemplo listo para usar:
+
+- `scripts/example_workflow.json`
+
 Tambien puedes usar otro campo numerico:
 
 ```bash

@@ -51,3 +51,21 @@ def filter_by_domain(
 
     mask = df[domain_col].astype(str).isin(allowed)
     return df.loc[mask].copy()
+
+
+def list_numeric_columns(df: pd.DataFrame) -> list[str]:
+    """Return numeric columns suitable for variables like grade/density."""
+    out: list[str] = []
+    for col in df.columns:
+        if pd.api.types.is_numeric_dtype(df[col]):
+            out.append(col)
+    return out
+
+
+def list_categorical_columns(df: pd.DataFrame) -> list[str]:
+    """Return non-numeric columns that can be used for domain filters."""
+    out: list[str] = []
+    for col in df.columns:
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            out.append(col)
+    return out

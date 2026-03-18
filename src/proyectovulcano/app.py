@@ -1,13 +1,26 @@
 from __future__ import annotations
 
 import argparse
+import pandas as pd
 
+from .automation import run_script_file
 from .block_model import build_regular_block_model
 from .compositing import composite_drillholes
 from .io import filter_by_domain, load_drillholes_csv
 from .sections import extract_section
 from .stats import compare_composites_vs_blocks, format_stats_report
 from .viewer import show_block_model, show_drillholes, show_section_2d
+
+
+def _apply_value_factor(df: pd.DataFrame, value_col: str, factor: float) -> pd.DataFrame:
+    if factor == 1.0:
+        return df
+    if value_col not in df.columns:
+        return df
+
+    out = df.copy()
+    out[value_col] = pd.to_numeric(out[value_col], errors="coerce") * factor
+    return out
 
 
 def _build_blocks_pipeline(df, args):
@@ -53,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--file",
-        required=True,
+        default="data/example_drillholes.csv",
         help="Ruta al CSV de sondajes",
     )
     parser.add_argument(
@@ -81,7 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--view",
-        choices=["drillholes", "blocks", "section"],
+        choices=["drillholes", "blocks", "section", "gui"],
         default="drillholes",
         help="Tipo de visualizacion a mostrar",
     )
@@ -89,6 +102,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--value-col",
         default="au",
         help="Columna numerica para compositar/estimar",
+    )
+    parser.add_argument(
+        "--value-factor",
+        type=float,
+        default=1.0,
+        help="Factor multiplicativo para editar/ajustar la variable de ley",
     )
     parser.add_argument(
         "--domain-col",
@@ -200,6 +219,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Muestra en 3D la ventana/plano de seccion",
     )
+    parser.add_argument(
+        "--script",
+        default=None,
+        help="Ruta a script JSON de automatizacion",
+    )
     parser.set_defaults(show_traces=True)
     return parser
 
@@ -208,12 +232,25 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
+    if args.script:
+        logs = run_script_file(args.script)
+        for line in logs:
+            print(line)
+        return
+
+    if args.view == "gui":
+        from .gui import launch_main_interface
+
+        launch_main_interface(initial_file=args.file)
+        return
+
     df = load_drillholes_csv(args.file)
     df = filter_by_domain(
         df,
         domain_col=args.domain_col,
         domain_values=args.domain_values,
     )
+    df = _apply_value_factor(df, value_col=args.value_col, factor=args.value_factor)
     if df.empty:
         raise ValueError("No hay datos luego de aplicar el filtro de dominio")
 

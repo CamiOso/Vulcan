@@ -1,0 +1,25 @@
+{
+  "file": "data/example_drillholes.csv",
+  "view": "blocks",
+  "value_col": "au",
+  "value_factor": 1.0,
+  "domain_col": null,
+  "domain_values": null,
+  "composite_length": 8.0,
+  "block_size": [8.0, 8.0, 4.0],
+  "padding": [0.0, 0.0, 0.0],
+  "idw_power": 2.0,
+  "search_radius": 35.0,
+  "max_samples": 12,
+  "show_section_window": true,
+  "section_type": "longitudinal",
+  "section_center": null,
+  "section_width": 25.0,
+  "no_show": true,
+  "report_stats": true,
+  "export": {
+    "composites": "outputs/composites_script.csv",
+    "blocks": "outputs/block_model_script.csv",
+    "stats": "outputs/stats_script.txt"
+  }
+}
