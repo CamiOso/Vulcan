@@ -122,7 +122,7 @@ class SetupWizard:
                     f"Resolucion: {self.resolution_var.get()}\n"
                     f"Estilo: {self.style_var.get()}\n"
                     f"Unidades: {self.units_var.get()}\n\n"
-                    "Pulsa Finalizar para entrar al entorno de diseno."
+                    "Pulsa Finalizar para entrar al entorno de diseño."
                 ),
                 justify="left",
             ).pack(anchor="w", pady=(12, 0))
@@ -156,7 +156,7 @@ class SetupWizard:
 
 
 class StartupWindow:
-    """Ventana de inicio sin licencia: carpeta de datos + acceso a ENVISAJE."""
+    """Ventana de inicio sin licencia: carpeta de datos + acceso a entorno principal."""
 
     def __init__(self, root: tk.Tk, config: dict, on_open_env, initial_file: str):
         self.root = root
@@ -179,7 +179,7 @@ class StartupWindow:
         ttk.Label(wrap, text="Ventana de Presentacion", font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
         ttk.Label(
             wrap,
-            text="Selecciona carpeta de datos. Para abrir ENVISAJE: doble clic en el boton.",
+            text="Selecciona carpeta de datos. Para abrir el entorno: doble clic en el botón.",
         ).pack(anchor="w", pady=(4, 12))
 
         data_frame = ttk.LabelFrame(wrap, text="Carpeta de datos", padding=10)
@@ -189,9 +189,9 @@ class StartupWindow:
         ttk.Button(data_frame, text="Explorar", command=self._browse_data_folder).grid(row=0, column=2)
         data_frame.columnconfigure(1, weight=1)
 
-        env_frame = ttk.LabelFrame(wrap, text="Entorno de diseno", padding=10)
+        env_frame = ttk.LabelFrame(wrap, text="Entorno de diseño", padding=10)
         env_frame.pack(fill="x", pady=6)
-        env_btn = ttk.Button(env_frame, text="ENVISAJE", width=24)
+        env_btn = ttk.Button(env_frame, text="Abrir entorno", width=24)
         env_btn.pack(side="left")
         env_btn.bind("<Double-Button-1>", self._open_env)
         ttk.Button(env_frame, text="Guardar", command=self._save).pack(side="left", padx=8)
@@ -235,17 +235,17 @@ class StartupWindow:
             messagebox.showerror("Configuracion", "La carpeta de datos no existe")
             return
 
-        self._log("Abriendo ENVISAJE...")
+        self._log("Abriendo entorno...")
         self.on_open_env(self.config, self.initial_file)
 
 
 class VulcanoMainWindow:
-    """Ventana principal de diseno/modelado (ENVISAJE)."""
+    """Ventana principal de diseño/modelado."""
 
     def __init__(self, win: tk.Toplevel, config: dict, initial_file: str):
         self.win = win
         self.config = config
-        self.win.title("ENVISAJE - Proyecto Vulcano")
+        self.win.title("Proyecto Vulcano")
         self.win.geometry(str(config.get("ui_resolution", "1280x800")))
 
         # Log panel for user feedback and error messages
@@ -539,7 +539,7 @@ class VulcanoMainWindow:
 
         self.log = ScrolledText(top, height=10)
         self.log.pack(fill="both", expand=True)
-        self._log("ENVISAJE listo")
+        self._log("Proyecto Vulcano listo")
 
     def _on_module_select(self, _event=None) -> None:
         if self.module_listbox is None or self.module_detail is None:
@@ -559,7 +559,7 @@ class VulcanoMainWindow:
         self.module_detail.configure(state="disabled")
 
     def _about(self) -> None:
-        messagebox.showinfo("Acerca de", "ENVISAJE: area principal de diseno y modelado")
+        messagebox.showinfo("Acerca de", "Proyecto Vulcano: área principal de diseño y modelado")
 
     def _select_data_folder(self) -> None:
         selected = filedialog.askdirectory(title="Seleccionar carpeta de datos", initialdir=str(self._data_folder()))
@@ -845,7 +845,7 @@ class VulcanoMainWindow:
             self._log(f"ERROR: {exc}")
 
 
-def _open_envisaje(config: dict, initial_file: str) -> None:
+def _open_principal(config: dict, initial_file: str) -> None:
     win = tk.Toplevel()
     VulcanoMainWindow(win, config=config, initial_file=initial_file)
 
@@ -860,7 +860,7 @@ def launch_main_interface(initial_file: str = "data/example_drillholes.csv") -> 
             root.destroy()
             return
 
-    StartupWindow(root, config=config, on_open_env=_open_envisaje, initial_file=initial_file)
+    StartupWindow(root, config=config, on_open_env=_open_principal, initial_file=initial_file)
     root.mainloop()
 
 
