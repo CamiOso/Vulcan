@@ -59,6 +59,45 @@ En la UI tienes:
 - Slider para mover section-center de forma interactiva.
 - Botones de exportacion directa (composites, bloques, seccion, reporte).
 
+## Ventanas y flujo de navegacion
+
+1. Inicio:
+- Ventana de presentacion.
+- Seleccion de carpeta de datos (explorador integrado).
+- Mensajes de estado de configuracion.
+
+2. Seleccion de carpeta de datos:
+- Campo de directorio de trabajo + Browse de carpetas.
+- Define donde buscar y guardar informacion de mina/proyecto.
+
+3. Asistente inicial (primer uso, 4 pasos):
+- Bienvenida.
+- Configuracion grafica (resolucion y estilo visual).
+- Seleccion de unidades (metros/pies).
+- Confirmacion final.
+
+4. Entorno de diseno/modelado:
+- Se abre con doble clic en ENVISAJE desde la ventana de inicio.
+- Incluye panel de modulos de Vulcan activables/desactivables.
+- Incluye visualizacion 3D/2D, modelado de bloques, secciones y exportaciones.
+
+5. Ventana de mensajes/notificaciones:
+- Errores de seleccion y confirmaciones de acciones.
+- Log de ejecucion de vistas y scripts.
+
+## Catalogo de modulos en la GUI
+
+- Geology & Estimation
+- Open Pit Design
+- Underground Design
+- Multivariate & Simulation
+- Open Pit Optimisation
+- Scheduling Suite
+- Grade Control Suite
+- Geotechnical Suite
+- Drillhole Optimiser
+- Stope Optimiser
+
 ## Funcionalidades Principales
 
 - Creacion de modelos de bloques: construccion de block model regular con IDW.
