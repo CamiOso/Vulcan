@@ -1,0 +1,4 @@
+numpy>=1.26
+pandas>=2.2
+pyvista>=0.44
+vtk>=9.3
