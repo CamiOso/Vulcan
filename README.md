@@ -59,6 +59,24 @@ Visualizar block model IDW:
 python -m proyectovulcano --file data/example_drillholes.csv --view blocks --value-col au
 ```
 
+Visualizar seccion longitudinal desde sondajes:
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view section --section-source drillholes --section-type longitudinal --section-width 25 --color-by au
+```
+
+Visualizar seccion transversal desde block model:
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view section --section-source blocks --section-type transversal --section-width 20 --value-col au
+```
+
+Filtrar por dominio geologico (ejemplo):
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view blocks --value-col au --domain-col lith --domain-values mineral
+```
+
 Ajustar tamano de bloque y parametros IDW:
 
 ```bash
@@ -69,6 +87,24 @@ Exportar compositos y bloques:
 
 ```bash
 python -m proyectovulcano --file data/example_drillholes.csv --view blocks --value-col au --export-composites outputs/composites.csv --export-blocks outputs/block_model.csv
+```
+
+Pipeline sin abrir ventana (ideal para validacion o CI):
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view blocks --value-col au --no-show
+```
+
+Reporte estadistico composites vs bloques:
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view blocks --value-col au --no-show --report-stats --stats-file outputs/stats_report.txt
+```
+
+Exportar puntos de seccion a CSV:
+
+```bash
+python -m proyectovulcano --file data/example_drillholes.csv --view section --section-source blocks --section-type longitudinal --section-width 20 --no-show --export-section outputs/section_points.csv
 ```
 
 ## Formato CSV esperado
@@ -84,7 +120,8 @@ Columnas opcionales:
 
 - Cualquier variable numerica para colorear (ejemplo: `au`, `density`).
 - `depth` para ordenar muestras en compositado (si no existe, se usa geometria 3D).
+- Columna categorica de dominio (ejemplo: `lith`) para filtrar con `--domain-col`.
 
 ## Siguiente paso recomendado
 
-Agregar secciones, filtros por dominio y validacion estadistica del modelo.
+Agregar comparacion con produccion real y limites geologicos implicitos/explicitos.

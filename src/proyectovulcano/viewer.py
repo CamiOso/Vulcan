@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pyvista as pv
@@ -135,3 +136,57 @@ def show_block_model(
         ztitle="Z",
     )
     plotter.show()
+
+
+def show_section_2d(
+    section_df: pd.DataFrame,
+    meta: dict[str, float | str],
+    color_by: str | None = None,
+    title: str = "Proyecto Vulcano - Seccion 2D",
+) -> None:
+    """Render longitudinal/transversal section as a 2D scatter."""
+    if section_df.empty:
+        raise ValueError("No hay puntos dentro de la ventana de seccion")
+
+    horiz_col = str(meta["horiz_col"])
+    horiz_label = str(meta["horiz_label"])
+    center = float(meta["center"])
+    width = float(meta["width"])
+    orth_col = str(meta["orth_col"])
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    use_color = None
+    if color_by and color_by in section_df.columns:
+        series = pd.to_numeric(section_df[color_by], errors="coerce")
+        if series.notna().any():
+            use_color = series
+
+    if use_color is not None:
+        sc = ax.scatter(
+            section_df[horiz_col],
+            section_df["z"],
+            c=use_color,
+            cmap="viridis",
+            s=45,
+            edgecolors="none",
+        )
+        cbar = fig.colorbar(sc, ax=ax)
+        cbar.set_label(color_by)
+    else:
+        ax.scatter(
+            section_df[horiz_col],
+            section_df["z"],
+            color="#1f2a44",
+            s=45,
+            edgecolors="none",
+        )
+
+    ax.set_xlabel(horiz_label)
+    ax.set_ylabel("Z")
+    ax.set_title(
+        f"{title} | {orth_col.upper()}={center:.2f} +/- {width / 2.0:.2f}"
+    )
+    ax.grid(True, alpha=0.35)
+    fig.tight_layout()
+    plt.show()

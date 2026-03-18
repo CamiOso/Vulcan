@@ -4,8 +4,47 @@ import argparse
 
 from .block_model import build_regular_block_model
 from .compositing import composite_drillholes
-from .io import load_drillholes_csv
-from .viewer import show_block_model, show_drillholes
+from .io import filter_by_domain, load_drillholes_csv
+from .sections import extract_section
+from .stats import compare_composites_vs_blocks, format_stats_report
+from .viewer import show_block_model, show_drillholes, show_section_2d
+
+
+def _build_blocks_pipeline(df, args):
+    composites_df = composite_drillholes(
+        df,
+        value_col=args.value_col,
+        composite_length=args.composite_length,
+    )
+    if args.export_composites:
+        composites_df.to_csv(args.export_composites, index=False)
+
+    block_df = build_regular_block_model(
+        composites_df,
+        value_col=args.value_col,
+        cell_size=tuple(args.block_size),
+        padding=tuple(args.padding),
+        power=args.idw_power,
+        search_radius=args.search_radius,
+        max_samples=args.max_samples,
+    )
+    if args.export_blocks:
+        block_df.to_csv(args.export_blocks, index=False)
+
+    if args.report_stats or args.stats_file:
+        report = compare_composites_vs_blocks(
+            composites_df,
+            block_df,
+            value_col=args.value_col,
+        )
+        text = format_stats_report(report, value_col=args.value_col)
+        if args.report_stats:
+            print(text)
+        if args.stats_file:
+            with open(args.stats_file, "w", encoding="utf-8") as f:
+                f.write(text + "\n")
+
+    return composites_df, block_df
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,7 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--view",
-        choices=["drillholes", "blocks"],
+        choices=["drillholes", "blocks", "section"],
         default="drillholes",
         help="Tipo de visualizacion a mostrar",
     )
@@ -50,6 +89,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--value-col",
         default="au",
         help="Columna numerica para compositar/estimar",
+    )
+    parser.add_argument(
+        "--domain-col",
+        default=None,
+        help="Columna categorica para filtro de dominio",
+    )
+    parser.add_argument(
+        "--domain-values",
+        nargs="+",
+        default=None,
+        help="Valores permitidos del dominio (separados por espacio)",
     )
     parser.add_argument(
         "--composite-length",
@@ -101,6 +151,50 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Ruta CSV para exportar modelo de bloques",
     )
+    parser.add_argument(
+        "--report-stats",
+        action="store_true",
+        help="Imprime comparacion estadistica de composites vs bloques",
+    )
+    parser.add_argument(
+        "--stats-file",
+        default=None,
+        help="Ruta de salida para guardar el reporte estadistico",
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Ejecuta pipeline sin abrir ventana de visualizacion",
+    )
+    parser.add_argument(
+        "--section-source",
+        choices=["drillholes", "blocks"],
+        default="drillholes",
+        help="Fuente de datos para la seccion cuando view=section",
+    )
+    parser.add_argument(
+        "--section-type",
+        choices=["longitudinal", "transversal"],
+        default="longitudinal",
+        help="Tipo de seccion 2D",
+    )
+    parser.add_argument(
+        "--section-center",
+        type=float,
+        default=None,
+        help="Centro de la seccion sobre eje ortogonal (auto si se omite)",
+    )
+    parser.add_argument(
+        "--section-width",
+        type=float,
+        default=20.0,
+        help="Ancho total de la ventana de seccion",
+    )
+    parser.add_argument(
+        "--export-section",
+        default=None,
+        help="Ruta CSV para exportar puntos de la seccion",
+    )
     parser.set_defaults(show_traces=True)
     return parser
 
@@ -110,42 +204,68 @@ def main() -> None:
     args = parser.parse_args()
 
     df = load_drillholes_csv(args.file)
+    df = filter_by_domain(
+        df,
+        domain_col=args.domain_col,
+        domain_values=args.domain_values,
+    )
+    if df.empty:
+        raise ValueError("No hay datos luego de aplicar el filtro de dominio")
 
     if args.view == "drillholes":
-        show_drillholes(
-            df,
-            color_by=args.color_by,
-            point_size=args.point_size,
-            show_traces=args.show_traces,
-            trace_width=args.trace_width,
-        )
+        if not args.no_show:
+            show_drillholes(
+                df,
+                color_by=args.color_by,
+                point_size=args.point_size,
+                show_traces=args.show_traces,
+                trace_width=args.trace_width,
+            )
         return
 
-    composites_df = composite_drillholes(
-        df,
-        value_col=args.value_col,
-        composite_length=args.composite_length,
-    )
-    if args.export_composites:
-        composites_df.to_csv(args.export_composites, index=False)
+    if args.view == "blocks":
+        _, block_df = _build_blocks_pipeline(df, args)
+        if not args.no_show:
+            show_block_model(
+                block_df,
+                value_col=args.value_col,
+                point_size=max(args.block_size[0], args.block_size[1]) * 0.6,
+            )
+        return
 
-    block_df = build_regular_block_model(
-        composites_df,
-        value_col=args.value_col,
-        cell_size=tuple(args.block_size),
-        padding=tuple(args.padding),
-        power=args.idw_power,
-        search_radius=args.search_radius,
-        max_samples=args.max_samples,
-    )
-    if args.export_blocks:
-        block_df.to_csv(args.export_blocks, index=False)
+    if args.section_source == "blocks":
+        _, source_df = _build_blocks_pipeline(df, args)
+        color_by = args.value_col
+        title = "Proyecto Vulcano - Seccion de Bloques"
+    else:
+        source_df = df
+        if args.color_by:
+            color_by = args.color_by
+        elif args.value_col in source_df.columns:
+            color_by = args.value_col
+        else:
+            color_by = None
+        title = "Proyecto Vulcano - Seccion de Sondajes"
 
-    show_block_model(
-        block_df,
-        value_col=args.value_col,
-        point_size=max(args.block_size[0], args.block_size[1]) * 0.6,
+    section_df, meta = extract_section(
+        source_df,
+        section_type=args.section_type,
+        center=args.section_center,
+        width=args.section_width,
     )
+    if section_df.empty:
+        raise ValueError("No hay puntos dentro de la ventana de seccion")
+
+    if args.export_section:
+        section_df.to_csv(args.export_section, index=False)
+
+    if not args.no_show:
+        show_section_2d(
+            section_df,
+            meta,
+            color_by=color_by,
+            title=title,
+        )
 
 
 if __name__ == "__main__":

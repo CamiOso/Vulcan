@@ -29,3 +29,25 @@ def load_drillholes_csv(file_path: str | Path) -> pd.DataFrame:
         raise ValueError("Columns x, y, z must be numeric and non-null.")
 
     return df
+
+
+def filter_by_domain(
+    df: pd.DataFrame,
+    domain_col: str | None = None,
+    domain_values: list[str] | None = None,
+) -> pd.DataFrame:
+    """Filter dataframe by categorical domain values."""
+    if not domain_col:
+        return df
+    if domain_col not in df.columns:
+        raise ValueError(f"Domain column not found: {domain_col}")
+
+    if not domain_values:
+        return df
+
+    allowed = {str(v).strip() for v in domain_values if str(v).strip()}
+    if not allowed:
+        return df
+
+    mask = df[domain_col].astype(str).isin(allowed)
+    return df.loc[mask].copy()
