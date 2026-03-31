@@ -224,6 +224,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Ruta a script JSON de automatizacion",
     )
+    parser.add_argument(
+        "--qt-gui",
+        action="store_true",
+        help="Lanzar la interfaz mockup PyQt5 (gui_mockup)",
+    )
     parser.set_defaults(show_traces=True)
     return parser
 
@@ -231,6 +236,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+
+    if getattr(args, "qt_gui", False):
+        import sys
+        from proyectovulcano import gui_mockup
+        sys.exit(gui_mockup.run_qt_gui())
 
     if args.script:
         logs = run_script_file(args.script)
