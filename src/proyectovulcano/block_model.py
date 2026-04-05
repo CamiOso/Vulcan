@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from typing import Optional
 
 
 def _axis_centers(min_val: float, max_val: float, cell: float) -> np.ndarray:
@@ -53,11 +54,41 @@ def build_regular_block_model(
     value_col: str,
     cell_size: tuple[float, float, float] = (10.0, 10.0, 5.0),
     padding: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    estimation_method: str = "idw",
     power: float = 2.0,
     search_radius: float = 25.0,
     max_samples: int = 12,
+    variogram_model: str = "spherical",
 ) -> pd.DataFrame:
-    """Build a regular block model and estimate value_col by IDW."""
+    """
+    Build a regular block model and estimate value_col by IDW or Kriging.
+    
+    Parameters:
+    -----------
+    composites_df : pd.DataFrame
+        Input composite data
+    value_col : str
+        Column name to estimate
+    cell_size : tuple
+        (dx, dy, dz) block size
+    padding : tuple
+        (px, py, pz) padding around data
+    estimation_method : str
+        'idw' (Inverse Distance Weighting) or 'kriging' (Ordinary Kriging)
+    power : float
+        Power parameter for IDW (default=2)
+    search_radius : float
+        Search radius for neighbors
+    max_samples : int
+        Maximum number of neighbors to use
+    variogram_model : str
+        'spherical' or 'exponential' for kriging
+        
+    Returns:
+    --------
+    blocks_df : pd.DataFrame
+        Block model with estimates
+    """
     if value_col not in composites_df.columns:
         raise ValueError(f"Column not found for estimation: {value_col}")
 
@@ -83,6 +114,47 @@ def build_regular_block_model(
     sample_xyz = valid[["x", "y", "z"]].to_numpy(dtype=float)
     sample_values = valid[value_col].to_numpy(dtype=float)
 
+    # Use kriging if requested
+    if estimation_method.lower() == "kriging":
+        try:
+            from .kriging import OrdinaryKriging
+            kriging = OrdinaryKriging(valid, value_col)
+            records = _build_kriging_blocks(
+                x_centers, y_centers, z_centers,
+                kriging, value_col, dx, dy, dz
+            )
+        except ImportError:
+            print("Kriging module not available, falling back to IDW")
+            records = _build_idw_blocks(
+                x_centers, y_centers, z_centers,
+                sample_xyz, sample_values, value_col,
+                dx, dy, dz, power, search_radius, max_samples
+            )
+    else:
+        records = _build_idw_blocks(
+            x_centers, y_centers, z_centers,
+            sample_xyz, sample_values, value_col,
+            dx, dy, dz, power, search_radius, max_samples
+        )
+
+    return pd.DataFrame.from_records(records)
+
+
+def _build_idw_blocks(
+    x_centers: np.ndarray,
+    y_centers: np.ndarray,
+    z_centers: np.ndarray,
+    sample_xyz: np.ndarray,
+    sample_values: np.ndarray,
+    value_col: str,
+    dx: float,
+    dy: float,
+    dz: float,
+    power: float,
+    search_radius: float,
+    max_samples: int,
+) -> list[dict]:
+    """Build blocks using IDW estimation"""
     records: list[dict] = []
     for i, x in enumerate(x_centers):
         for j, y in enumerate(y_centers):
@@ -109,7 +181,46 @@ def build_regular_block_model(
                         "dz": float(dz),
                         value_col: estimate,
                         "n_used": n_used,
+                        "method": "IDW",
                     }
                 )
+    return records
 
-    return pd.DataFrame.from_records(records)
+
+def _build_kriging_blocks(
+    x_centers: np.ndarray,
+    y_centers: np.ndarray,
+    z_centers: np.ndarray,
+    kriging,
+    value_col: str,
+    dx: float,
+    dy: float,
+    dz: float,
+) -> list[dict]:
+    """Build blocks using Kriging estimation"""
+    records: list[dict] = []
+    for i, x in enumerate(x_centers):
+        for j, y in enumerate(y_centers):
+            for k, z in enumerate(z_centers):
+                estimate, variance = kriging.estimate(
+                    point=np.array([x, y, z], dtype=float)
+                )
+                records.append(
+                    {
+                        "i": int(i),
+                        "j": int(j),
+                        "k": int(k),
+                        "block_id": f"B_{i}_{j}_{k}",
+                        "x": float(x),
+                        "y": float(y),
+                        "z": float(z),
+                        "dx": float(dx),
+                        "dy": float(dy),
+                        "dz": float(dz),
+                        value_col: estimate,
+                        "kriging_variance": float(variance),
+                        "n_used": 1,
+                        "method": "Kriging",
+                    }
+                )
+    return records
