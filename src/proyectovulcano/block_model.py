@@ -59,9 +59,10 @@ def build_regular_block_model(
     search_radius: float = 25.0,
     max_samples: int = 12,
     variogram_model: str = "spherical",
+    ml_model_type: str = "rf",
 ) -> pd.DataFrame:
     """
-    Build a regular block model and estimate value_col by IDW or Kriging.
+    Build a regular block model and estimate value_col by IDW, Kriging, or ML.
     
     Parameters:
     -----------
@@ -74,7 +75,8 @@ def build_regular_block_model(
     padding : tuple
         (px, py, pz) padding around data
     estimation_method : str
-        'idw' (Inverse Distance Weighting) or 'kriging' (Ordinary Kriging)
+        'idw' (Inverse Distance Weighting), 'kriging' (Ordinary Kriging), 
+        or 'ml' (Machine Learning)
     power : float
         Power parameter for IDW (default=2)
     search_radius : float
@@ -83,6 +85,8 @@ def build_regular_block_model(
         Maximum number of neighbors to use
     variogram_model : str
         'spherical' or 'exponential' for kriging
+    ml_model_type : str
+        'linear', 'rf' (Random Forest), or 'gb' (Gradient Boosting) for ML
         
     Returns:
     --------
@@ -125,6 +129,20 @@ def build_regular_block_model(
             )
         except ImportError:
             print("Kriging module not available, falling back to IDW")
+            records = _build_idw_blocks(
+                x_centers, y_centers, z_centers,
+                sample_xyz, sample_values, value_col,
+                dx, dy, dz, power, search_radius, max_samples
+            )
+    elif estimation_method.lower() == "ml":
+        try:
+            from .machine_learning import RegressionEstimator
+            records = _build_ml_blocks(
+                x_centers, y_centers, z_centers,
+                valid, value_col, dx, dy, dz, ml_model_type
+            )
+        except ImportError:
+            print("Machine Learning module not available, falling back to IDW")
             records = _build_idw_blocks(
                 x_centers, y_centers, z_centers,
                 sample_xyz, sample_values, value_col,
@@ -221,6 +239,66 @@ def _build_kriging_blocks(
                         "kriging_variance": float(variance),
                         "n_used": 1,
                         "method": "Kriging",
+                    }
+                )
+    return records
+
+
+def _build_ml_blocks(
+    x_centers: np.ndarray,
+    y_centers: np.ndarray,
+    z_centers: np.ndarray,
+    composites: pd.DataFrame,
+    value_col: str,
+    dx: float,
+    dy: float,
+    dz: float,
+    model_type: str = "rf",
+) -> list[dict]:
+    """Build blocks using Machine Learning estimation"""
+    from .machine_learning import RegressionEstimator
+    
+    # Fit ML model
+    estimator = RegressionEstimator(model_type, normalize=True)
+    estimator.fit(composites, value_col)
+    
+    records: list[dict] = []
+    for i, x in enumerate(x_centers):
+        for j, y in enumerate(y_centers):
+            for k, z in enumerate(z_centers):
+                # Create feature array: coordinate + average of other numeric features
+                coord = np.array([[x, y, z]])
+                
+                # Get other numeric features if available
+                feature_cols = estimator.feature_cols
+                if len(feature_cols) > 3:  # More than just x, y, z
+                    other_features = composites[feature_cols[3:]].mean().values.reshape(1, -1)
+                    X_input = np.hstack([coord, other_features])
+                else:
+                    X_input = coord
+                
+                # Predict
+                try:
+                    estimate = float(estimator.predict(X_input)[0])
+                except:
+                    estimate = composites[value_col].mean()
+                
+                records.append(
+                    {
+                        "i": int(i),
+                        "j": int(j),
+                        "k": int(k),
+                        "block_id": f"B_{i}_{j}_{k}",
+                        "x": float(x),
+                        "y": float(y),
+                        "z": float(z),
+                        "dx": float(dx),
+                        "dy": float(dy),
+                        "dz": float(dz),
+                        value_col: estimate,
+                        "n_used": 1,
+                        "method": "ML",
+                        "ml_model": model_type,
                     }
                 )
     return records
