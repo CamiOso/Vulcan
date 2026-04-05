@@ -229,6 +229,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Lanzar la interfaz mockup PyQt5 (gui_mockup)",
     )
+    parser.add_argument(
+        "--pyqt5",
+        action="store_true",
+        help="Lanzar la interfaz PyQt5 en lugar de tkinter",
+    )
     parser.set_defaults(show_traces=True)
     return parser
 
@@ -249,9 +254,21 @@ def main() -> None:
         return
 
     if args.view == "gui":
-        from .gui import launch_main_interface
-
-        launch_main_interface(initial_file=args.file)
+        # Support both tkinter (default) and PyQt5 interfaces
+        use_pyqt5 = getattr(args, "pyqt5", False)
+        
+        if use_pyqt5:
+            try:
+                from .gui_pyqt5 import launch_pyqt5_interface
+                launch_pyqt5_interface()
+            except ImportError:
+                print("PyQt5 no está instalado. Instalalo con: pip install PyQt5")
+                print("Usando interfaz tkinter por defecto...")
+                from .gui import launch_main_interface
+                launch_main_interface(initial_file=args.file)
+        else:
+            from .gui import launch_main_interface
+            launch_main_interface(initial_file=args.file)
         return
 
     df = load_drillholes_csv(args.file)
