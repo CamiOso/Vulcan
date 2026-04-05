@@ -18,10 +18,13 @@ from .stats import compare_composites_vs_blocks, format_stats_report
 from .viewer import show_drillholes, show_block_model, show_section_2d
 from .sections import extract_section
 from .config import load_user_config, save_user_config
+from .machine_learning import RegressionEstimator, FeatureEngineer
+import json
+import numpy as np
 
 
 class VulcanoMainWindow(QMainWindow):
-    """Main window for Proyecto Vulcano v0.3.0 (PyQt5)"""
+    """Main window for Proyecto Vulcano v0.6.0 (PyQt5 with ML)"""
 
     def __init__(self):
         super().__init__()
@@ -34,7 +37,7 @@ class VulcanoMainWindow(QMainWindow):
         self.last_composites_df = None
         self.last_block_df = None
         
-        self.setWindowTitle("Proyecto Vulcano v0.3.0 - Modelado de Minería")
+        self.setWindowTitle("Proyecto Vulcano v0.6.0 - Modelado de Minería con ML")
         self.setGeometry(100, 100, 1600, 1000)
         self.setStyle('Fusion')
         
@@ -229,6 +232,52 @@ class VulcanoMainWindow(QMainWindow):
         sections_group.setLayout(sections_layout)
         layout.addWidget(sections_group)
         
+        # Machine Learning parameters
+        ml_group = QGroupBox("🤖 MACHINE LEARNING - Parámetros")
+        ml_layout = QGridLayout()
+        
+        ml_layout.addWidget(QLabel("Estimación:"), 0, 0)
+        self.estimation_combo = QComboBox()
+        self.estimation_combo.addItems(["IDW", "Kriging", "Linear Regression", "Random Forest", "Gradient Boosting"])
+        ml_layout.addWidget(self.estimation_combo, 0, 1)
+        
+        ml_layout.addWidget(QLabel("N estimadores:"), 1, 0)
+        self.n_estimators_spin = QSpinBox()
+        self.n_estimators_spin.setValue(100)
+        self.n_estimators_spin.setRange(10, 500)
+        ml_layout.addWidget(self.n_estimators_spin, 1, 1)
+        
+        ml_layout.addWidget(QLabel("Prof. máxima:"), 1, 2)
+        self.max_depth_spin = QSpinBox()
+        self.max_depth_spin.setValue(10)
+        self.max_depth_spin.setRange(1, 30)
+        self.max_depth_spin.setValue(10)
+        ml_layout.addWidget(self.max_depth_spin, 1, 3)
+        
+        ml_layout.addWidget(QLabel("Tasa aprendizaje:"), 2, 0)
+        self.learning_rate_spin = QDoubleSpinBox()
+        self.learning_rate_spin.setValue(0.1)
+        self.learning_rate_spin.setRange(0.001, 1.0)
+        self.learning_rate_spin.setSingleStep(0.01)
+        ml_layout.addWidget(self.learning_rate_spin, 2, 1)
+        
+        ml_layout.addWidget(QLabel("Cross-Val folds:"), 2, 2)
+        self.cv_folds_spin = QSpinBox()
+        self.cv_folds_spin.setValue(5)
+        self.cv_folds_spin.setRange(2, 10)
+        ml_layout.addWidget(self.cv_folds_spin, 2, 3)
+        
+        self.ml_normalize_check = QCheckBox("Normalizar features")
+        self.ml_normalize_check.setChecked(True)
+        ml_layout.addWidget(self.ml_normalize_check, 3, 0)
+        
+        self.ml_feature_importance_check = QCheckBox("Importancia features")
+        self.ml_feature_importance_check.setChecked(True)
+        ml_layout.addWidget(self.ml_feature_importance_check, 3, 1)
+        
+        ml_group.setLayout(ml_layout)
+        layout.addWidget(ml_group)
+        
         layout.addStretch()
         widget.setLayout(layout)
         return widget
@@ -275,6 +324,10 @@ class VulcanoMainWindow(QMainWindow):
         export_stats_btn.clicked.connect(self._export_stats)
         export_layout.addWidget(export_stats_btn)
         
+        export_ml_btn = QPushButton("🤖 ML Comparación")
+        export_ml_btn.clicked.connect(self._export_ml_comparison)
+        export_layout.addWidget(export_ml_btn)
+        
         layout.addLayout(export_layout)
         
         # Progress bar
@@ -312,7 +365,7 @@ class VulcanoMainWindow(QMainWindow):
         layout.addWidget(self.status_label)
         layout.addStretch()
         
-        self.info_label = QLabel("v0.3.0 (PyQt5)")
+        self.info_label = QLabel("v0.6.0 (PyQt5 + ML)")
         layout.addWidget(self.info_label)
         
         frame.setLayout(layout)
@@ -388,14 +441,42 @@ class VulcanoMainWindow(QMainWindow):
                     value_col=self.color_combo.currentText(),
                     composite_length=self.composite_length_spin.value()
                 )
-                blocks_df = build_regular_block_model(
-                    composites_df,
-                    grid_size=(self.block_dx_spin.value(), self.block_dy_spin.value(), self.block_dz_spin.value()),
-                    value_col=self.color_combo.currentText(),
-                    power=self.idw_power_spin.value(),
-                    search_radius=self.search_radius_spin.value(),
-                    max_samples=self.max_samples_spin.value()
-                )
+                
+                # Get estimation method from UI
+                estimation_method = self.estimation_combo.currentText().lower().replace(" ", "_")
+                
+                # Map UI names to estimation method keys
+                method_map = {
+                    "idw": "idw",
+                    "kriging": "kriging",
+                    "linear_regression": "linear",
+                    "random_forest": "rf",
+                    "gradient_boosting": "gb"
+                }
+                estimation_method = method_map.get(estimation_method, "idw")
+                
+                # Build block model with selected estimation method
+                kwargs = {
+                    "grid_size": (self.block_dx_spin.value(), self.block_dy_spin.value(), self.block_dz_spin.value()),
+                    "value_col": self.color_combo.currentText(),
+                    "power": self.idw_power_spin.value(),
+                    "search_radius": self.search_radius_spin.value(),
+                    "max_samples": self.max_samples_spin.value(),
+                    "estimation_method": estimation_method
+                }
+                
+                # Add ML-specific parameters if using ML methods
+                if estimation_method in ["linear", "rf", "gb"]:
+                    kwargs["ml_params"] = {
+                        "algorithm": estimation_method,
+                        "normalize": self.ml_normalize_check.isChecked(),
+                        "cv_folds": self.cv_folds_spin.value(),
+                        "n_estimators": self.n_estimators_spin.value(),
+                        "max_depth": self.max_depth_spin.value(),
+                        "learning_rate": self.learning_rate_spin.value()
+                    }
+                
+                blocks_df = build_regular_block_model(composites_df, **kwargs)
                 
                 self.last_composites_df = composites_df
                 self.last_block_df = blocks_df
@@ -511,6 +592,76 @@ class VulcanoMainWindow(QMainWindow):
                 f.write(stats_text)
             
             self._log(f"✓ Estadísticas exportadas: {output_path}")
+        except Exception as e:
+            self._log(f"❌ Error al exportar: {e}")
+
+    def _export_ml_comparison(self) -> None:
+        """Export ML method comparison"""
+        if self.current_data is None:
+            QMessageBox.warning(self, "Error", "Carga un archivo CSV primero")
+            return
+        
+        try:
+            composites_df = composite_drillholes(
+                self.current_data,
+                value_col=self.color_combo.currentText(),
+                composite_length=self.composite_length_spin.value()
+            )
+            
+            results = {}
+            methods = ["idw", "linear", "rf", "gb"]
+            
+            self._log("🔄 Comparando métodos de estimación...")
+            
+            for method in methods:
+                try:
+                    kwargs = {
+                        "grid_size": (self.block_dx_spin.value(), self.block_dy_spin.value(), self.block_dz_spin.value()),
+                        "value_col": self.color_combo.currentText(),
+                        "power": self.idw_power_spin.value(),
+                        "search_radius": self.search_radius_spin.value(),
+                        "max_samples": self.max_samples_spin.value(),
+                        "estimation_method": method
+                    }
+                    
+                    if method in ["linear", "rf", "gb"]:
+                        kwargs["ml_params"] = {
+                            "algorithm": method,
+                            "normalize": self.ml_normalize_check.isChecked(),
+                            "cv_folds": self.cv_folds_spin.value(),
+                            "n_estimators": self.n_estimators_spin.value(),
+                            "max_depth": self.max_depth_spin.value(),
+                            "learning_rate": self.learning_rate_spin.value()
+                        }
+                    
+                    blocks_df = build_regular_block_model(composites_df, **kwargs)
+                    
+                    # Calculate statistics
+                    value_col = self.color_combo.currentText()
+                    mean_val = blocks_df[value_col].mean()
+                    std_val = blocks_df[value_col].std()
+                    min_val = blocks_df[value_col].min()
+                    max_val = blocks_df[value_col].max()
+                    
+                    results[method] = {
+                        "mean": mean_val,
+                        "std": std_val,
+                        "min": min_val,
+                        "max": max_val,
+                        "count": len(blocks_df)
+                    }
+                    self._log(f"✓ {method.upper()}: µ={mean_val:.4f}, σ={std_val:.4f}")
+                except Exception as e:
+                    self._log(f"⚠ {method.upper()}: {str(e)[:50]}")
+                    results[method] = {"error": str(e)}
+            
+            # Export comparison
+            output_path = Path("outputs") / "ml_comparison_pyqt.json"
+            output_path.parent.mkdir(exist_ok=True)
+            with open(output_path, "w") as f:
+                json.dump(results, f, indent=2)
+            
+            self._log(f"✓ Comparación ML exportada: {output_path}")
         except Exception as e:
             self._log(f"❌ Error al exportar: {e}")
 

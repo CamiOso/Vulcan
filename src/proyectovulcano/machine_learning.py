@@ -78,7 +78,14 @@ class FeatureEngineer:
 class RegressionEstimator:
     """Base class for regression estimators"""
 
-    def __init__(self, model_type: str = 'linear', normalize: bool = True):
+    def __init__(
+        self, 
+        model_type: str = 'linear', 
+        normalize: bool = True,
+        n_estimators: int = 100,
+        max_depth: Optional[int] = None,
+        learning_rate: float = 0.1
+    ):
         """
         Initialize estimator
 
@@ -88,9 +95,18 @@ class RegressionEstimator:
             'linear', 'rf' (random forest), or 'gb' (gradient boosting)
         normalize : bool
             Normalize features
+        n_estimators : int
+            Number of estimators (for RF and GB)
+        max_depth : Optional[int]
+            Maximum depth of trees
+        learning_rate : float
+            Learning rate (for GB)
         """
         self.model_type = model_type
         self.normalize = normalize
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth if max_depth is not None else (15 if model_type == 'rf' else 5)
+        self.learning_rate = learning_rate
         self.model = None
         self.engineer = None
         self.scaler = None
@@ -103,8 +119,8 @@ class RegressionEstimator:
             self.model = LinearRegression()
         elif self.model_type == 'rf':
             self.model = RandomForestRegressor(
-                n_estimators=100,
-                max_depth=15,
+                n_estimators=self.n_estimators,
+                max_depth=self.max_depth,
                 min_samples_split=5,
                 min_samples_leaf=2,
                 random_state=42,
@@ -112,9 +128,9 @@ class RegressionEstimator:
             )
         elif self.model_type == 'gb':
             self.model = GradientBoostingRegressor(
-                n_estimators=100,
-                learning_rate=0.1,
-                max_depth=5,
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                max_depth=self.max_depth,
                 min_samples_split=5,
                 min_samples_leaf=2,
                 random_state=42

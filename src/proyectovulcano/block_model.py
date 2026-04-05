@@ -60,6 +60,8 @@ def build_regular_block_model(
     max_samples: int = 12,
     variogram_model: str = "spherical",
     ml_model_type: str = "rf",
+    grid_size: tuple[float, float, float] = None,
+    ml_params: dict = None,
 ) -> pd.DataFrame:
     """
     Build a regular block model and estimate value_col by IDW, Kriging, or ML.
@@ -71,12 +73,12 @@ def build_regular_block_model(
     value_col : str
         Column name to estimate
     cell_size : tuple
-        (dx, dy, dz) block size
+        (dx, dy, dz) block size (or use grid_size parameter)
     padding : tuple
         (px, py, pz) padding around data
     estimation_method : str
         'idw' (Inverse Distance Weighting), 'kriging' (Ordinary Kriging), 
-        or 'ml' (Machine Learning)
+        'linear' (Linear Regression), 'rf' (Random Forest), or 'gb' (Gradient Boosting)
     power : float
         Power parameter for IDW (default=2)
     search_radius : float
@@ -86,13 +88,24 @@ def build_regular_block_model(
     variogram_model : str
         'spherical' or 'exponential' for kriging
     ml_model_type : str
-        'linear', 'rf' (Random Forest), or 'gb' (Gradient Boosting) for ML
+        'linear', 'rf' (Random Forest), or 'gb' (Gradient Boosting) for ML (deprecated, use estimation_method)
+    grid_size : tuple
+        Alternative name for cell_size (for GUI compatibility)
+    ml_params : dict
+        Additional ML parameters (normalize, cv_folds, n_estimators, max_depth, learning_rate)
         
     Returns:
     --------
     blocks_df : pd.DataFrame
         Block model with estimates
     """
+    # Handle grid_size as alias for cell_size
+    if grid_size is not None:
+        cell_size = grid_size
+    
+    # Set default ml_params
+    if ml_params is None:
+        ml_params = {}
     if value_col not in composites_df.columns:
         raise ValueError(f"Column not found for estimation: {value_col}")
 
@@ -118,6 +131,11 @@ def build_regular_block_model(
     sample_xyz = valid[["x", "y", "z"]].to_numpy(dtype=float)
     sample_values = valid[value_col].to_numpy(dtype=float)
 
+    # Determine if ML method
+    ml_methods = {"linear", "rf", "gb"}
+    method_lower = estimation_method.lower().replace("_", "")
+    is_ml_method = method_lower in ml_methods
+    
     # Use kriging if requested
     if estimation_method.lower() == "kriging":
         try:
@@ -134,12 +152,14 @@ def build_regular_block_model(
                 sample_xyz, sample_values, value_col,
                 dx, dy, dz, power, search_radius, max_samples
             )
-    elif estimation_method.lower() == "ml":
+    elif is_ml_method or estimation_method.lower() == "ml":
         try:
             from .machine_learning import RegressionEstimator
+            # Use estimation_method if it's a valid ML method, otherwise use ml_model_type
+            model_type = method_lower if is_ml_method else ml_model_type
             records = _build_ml_blocks(
                 x_centers, y_centers, z_centers,
-                valid, value_col, dx, dy, dz, ml_model_type
+                valid, value_col, dx, dy, dz, model_type, ml_params
             )
         except ImportError:
             print("Machine Learning module not available, falling back to IDW")
@@ -254,12 +274,29 @@ def _build_ml_blocks(
     dy: float,
     dz: float,
     model_type: str = "rf",
+    ml_params: dict = None,
 ) -> list[dict]:
     """Build blocks using Machine Learning estimation"""
     from .machine_learning import RegressionEstimator
     
+    if ml_params is None:
+        ml_params = {}
+    
+    # Extract ML parameters with defaults
+    normalize = ml_params.get("normalize", True)
+    cv_folds = ml_params.get("cv_folds", 5)
+    n_estimators = ml_params.get("n_estimators", 100)
+    max_depth = ml_params.get("max_depth", 10)
+    learning_rate = ml_params.get("learning_rate", 0.1)
+    
     # Fit ML model
-    estimator = RegressionEstimator(model_type, normalize=True)
+    estimator = RegressionEstimator(
+        model_type, 
+        normalize=normalize,
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=learning_rate
+    )
     estimator.fit(composites, value_col)
     
     records: list[dict] = []
