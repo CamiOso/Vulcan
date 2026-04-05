@@ -1,0 +1,12 @@
+{
+  "_description": "Visualización de sección 2D (longitudinal)",
+  "file": "data/example_drillholes.csv",
+  "view": "section",
+  "section_type": "longitudinal",
+  "section_center": null,
+  "section_width": 30.0,
+  "color_by": "au",
+  "export_section": "outputs/section_longitudinal.csv",
+  "show_section_window": false,
+  "no_show": false
+}

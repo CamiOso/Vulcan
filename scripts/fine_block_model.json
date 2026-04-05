@@ -1,0 +1,15 @@
+{
+  "_description": "Modelo de bloques con parámetros IDW personalizados",
+  "file": "data/example_drillholes.csv",
+  "view": "blocks",
+  "value_col": "au",
+  "composite_length": 5.0,
+  "block_size": [5.0, 5.0, 2.5],
+  "padding": [10.0, 10.0, 10.0],
+  "idw_power": 3.0,
+  "search_radius": 50.0,
+  "max_samples": 20,
+  "export_blocks": "outputs/blocks_fine.csv",
+  "report_stats": true,
+  "no_show": false
+}

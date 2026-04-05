@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -69,3 +70,54 @@ def list_categorical_columns(df: pd.DataFrame) -> list[str]:
         if not pd.api.types.is_numeric_dtype(df[col]):
             out.append(col)
     return out
+
+
+def export_dataframe_csv(df: pd.DataFrame, file_path: str | Path,
+                         precision: int = 4) -> None:
+    """Export dataframe to CSV with configurable precision."""
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=False, float_format=f"%.{precision}f")
+
+
+def export_dataframe_json(df: pd.DataFrame, file_path: str | Path) -> None:
+    """Export dataframe to JSON."""
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_json(path, orient="records", indent=2)
+
+
+def export_dataframe_xlsx(df: pd.DataFrame, file_path: str | Path) -> None:
+    """Export dataframe to Excel (requires openpyxl)."""
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_excel(path, index=False)
+
+
+def export_metadata(metadata: dict, file_path: str | Path) -> None:
+    """Export metadata/config to JSON."""
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, default=str)
+
+
+def import_drillholes_from_json(file_path: str | Path) -> pd.DataFrame:
+    """Import drillholes from JSON file."""
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"JSON file not found: {path}")
+    
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    df = pd.DataFrame(data)
+    
+    missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
+    if missing:
+        raise ValueError(
+            "JSON missing required columns: " + ", ".join(missing)
+        )
+    
+    return df
+

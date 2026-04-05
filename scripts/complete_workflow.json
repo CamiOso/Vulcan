@@ -1,0 +1,19 @@
+{
+  "_description": "Flujo completo: cargar sondajes, hacer compositos, modelo de bloques y estadísticas",
+  "file": "data/example_drillholes.csv",
+  "view": "blocks",
+  "value_col": "au",
+  "composite_length": 10.0,
+  "block_size": [10.0, 10.0, 5.0],
+  "padding": [5.0, 5.0, 5.0],
+  "idw_power": 2.0,
+  "search_radius": 25.0,
+  "max_samples": 12,
+  "export_composites": "outputs/composites.csv",
+  "export_blocks": "outputs/blocks.csv",
+  "export_section": "outputs/section.csv",
+  "report_stats": true,
+  "stats_file": "outputs/stats.txt",
+  "show_section_window": false,
+  "no_show": false
+}

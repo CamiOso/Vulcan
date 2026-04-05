@@ -4,19 +4,120 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proyectovulcano"
-version = "0.1.0"
-description = "MVP geologico-minero estilo Vulcan"
+version = "0.2.0"
+description = "Software tipo Vulcan para análisis de sondajes, compositos y modelo de bloques"
 readme = "README.md"
+license = {text = "MIT"}
+authors = [
+  {name = "Proyecto Vulcano", email = "contact@proyectovulcano.dev"}
+]
+keywords = ["mining", "geology", "drillholes", "block-model", "IDW", "estimation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: GIS",
+]
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
   "pyvista>=0.44",
   "vtk>=9.3",
+  "matplotlib>=3.7",
 ]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "black>=23.0",
+  "flake8>=6.0",
+  "mypy>=1.0",
+]
+excel = ["openpyxl>=3.10"]
+gui = ["PyQt5>=5.15"]
+all = [
+  "openpyxl>=3.10",
+  "PyQt5>=5.15",
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "black>=23.0",
+  "flake8>=6.0",
+  "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/user/proyectovulcano"
+Documentation = "https://proyectovulcano.readthedocs.io"
+Repository = "https://github.com/user/proyectovulcano.git"
+Issues = "https://github.com/user/proyectovulcano/issues"
+
+[project.scripts]
+proyectovulcano = "proyectovulcano.__main__:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+  "unit: Unit tests",
+  "integration: Integration tests",
+  "slow: Slow running tests",
+]
+
+[tool.coverage.run]
+source = ["src/proyectovulcano"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+

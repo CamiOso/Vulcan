@@ -1,0 +1,11 @@
+{
+  "_description": "Visualización simple de sondajes con colores por ley de oro",
+  "file": "data/example_drillholes.csv",
+  "view": "drillholes",
+  "color_by": "au",
+  "point_size": 10.0,
+  "show_traces": true,
+  "trace_width": 3.0,
+  "show_section_window": false,
+  "no_show": false
+}
